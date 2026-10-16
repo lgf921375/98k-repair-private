@@ -1,0 +1,50 @@
+name: Check public research scripts
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout public archive
+        uses: actions/checkout@v4
+
+      - name: Verify Python syntax (no execution of repair scripts)
+        run: |
+          python3 - <<'PY'
+          import ast
+          from pathlib import Path
+          files = sorted(Path("tools").glob("*.py"))
+          assert files, "No archived Python scripts found"
+          for path in files:
+              ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+              print("SYNTAX_OK", path)
+          PY
+
+      - name: Reject accidental publication of binaries or secret files
+        run: |
+          python3 - <<'PY'
+          import subprocess
+          from pathlib import PurePosixPath
+          paths = subprocess.check_output(["git", "ls-files", "-z"]).decode().split("\0")
+          forbidden_suffix = {
+              ".apk", ".aab", ".exe", ".dll", ".so", ".p12", ".pfx",
+              ".pem", ".key", ".keystore", ".jks", ".db", ".sqlite",
+              ".sqlite3", ".pcap", ".pcapng", ".dump", ".rar", ".zip",
+              ".7z", ".sql", ".bin"
+          }
+          bad = [
+              p for p in paths if p and
+              (PurePosixPath(p).suffix.lower() in forbidden_suffix
+               or any(x.lower() in {"keys", "secrets", "test-data", "user-data"} for x in PurePosixPath(p).parts))
+          ]
+          if bad:
+              raise SystemExit("Restricted files committed: " + ", ".join(bad))
+          print("PUBLIC_FILE_POLICY_OK")
+          PY
