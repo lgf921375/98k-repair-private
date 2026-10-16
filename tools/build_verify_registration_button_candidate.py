@@ -59,5 +59,3 @@ print('CHANGED_BYTES',len(delta),'HOOK_AND_STUB_ONLY')
 print('CANDIDATE_SHA256',sha(patched))
 print('ORIGINAL_UNCHANGED',sha(b))
 print('CANDIDATE_PATH',out)
-
-[executed on device: VM-0-12-ubuntu (7982cd47-ff9e-4237-90fc-65c512c97c76)]
